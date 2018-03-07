@@ -6,7 +6,7 @@ const app = express();
 app.get('/genres', function(request, response) {
   let connection = connect();
   //SELECT * FROM genres
-  let promise = connection.select().from('genresf')
+  let promise = connection.select().from('genres')
   promise.then(function(genres) {
     //success
     response.json(genres);
