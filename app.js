@@ -1,49 +1,82 @@
 const express = require('express');
 const knex = require('knex');
-
+const connect = require('./connect');
 const app = express();
+
+const Genre = require('./models/Genre');
+const Track = require ('./models/Track');
+
+app.get('/v2/genres', function(request, response) {
+  Genre.fetchAll().then(function(genres) {
+    response.json(genres);
+  });
+});
+
+app.get('/v2/genres/:id', function(request, response) {
+  let id = request.params.id;
+  let genre = new Genre({ GenreId: id });
+  genre.fetch()
+    .then(function(genre) {
+      if (!genre) {
+        throw new Error(`Genre ${id} not found`);
+      } else {
+        response.json(genre);
+      }
+    })
+    // .then(null, function(error) {})
+    .catch(function(error) {
+      response.status(404).json({
+        error: error.message
+      });
+    });
+});
 
 app.get('/genres', function(request, response) {
   let connection = connect();
-  //SELECT * FROM genres
-  let promise = connection.select().from('genres')
+  // SELECT * FROM genres
+  // 3 states of promises: pending, resolved (success), rejected (error)
+  let promise = connection.select().from('genres');
+  // pending
   promise.then(function(genres) {
-    //success
+    // success
     response.json(genres);
   }, function(err) {
-    //error
+    // error
     response.json({
-      error: err
-    })
+      error: 'Something went wrong when finding genres'
+    });
   });
 });
 
 app.get('/genres/:id', function(request, response) {
-  let id = request.params.id;
   let connection = connect();
+  let id = request.params.id;
+
+  // SELECT * FROM genres WHERE GenreId = ?
   let promise = connection
     .select()
     .from('genres')
     .where('GenreId', id)
     .first();
+
   promise.then(function(genre) {
     response.json(genre);
   }, function() {
-    response.json({
-      error: 'Cannot find genre ' + id
-    });
+    // response.json({
+    //   error: 'Cannot find genre ' + id
+    // });
   });
 });
 
-function connect() {
-  let connection = knex({
-    client: 'sqlite3',
-    connection: {
-      filename: './database.sqlite'
-    }
-  });
-  return connection;
-}
+app.delete('/tracks/:id', function(request, response) {
+  let id = request.params.id;
+  new Track({ TrackId: id})
+    .destroy().then(function(track) {
+      response.status(204).json();
+    }, function(err) {
+      response.status(404).json({error: 'Could not find track'});
+    });
+});
 
 const port = process.env.PORT || 8000;
 app.listen(port, function() {
